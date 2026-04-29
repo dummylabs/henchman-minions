@@ -1,0 +1,18 @@
+id: alive_ping
+name: Alive Ping
+description: Test minion that logs a heartbeat every minute
+severity: low
+cron: "* * * * *"
+timeout_seconds: 30
+max_parallel_runs: 1
+retention_days: 7
+config: {}
+tags:
+  - test
+  - heartbeat
+
+default_result:
+  _outcome:
+    code: idle
+    status: info
+    message: Waiting for first heartbeat

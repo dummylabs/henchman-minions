@@ -1,3 +1,4 @@
+import logging
 import time
 from typing import Any
 
@@ -5,6 +6,29 @@ from henchman_sdk import get_config, get_params, log_error, log_info, log_warnin
 
 from models import ScrapeResponse
 from scraper import extract_video_id, fetch_comments, fetch_metadata, fetch_subtitles
+
+
+class HenchmanLogHandler(logging.Handler):
+    def emit(self, record: logging.LogRecord) -> None:
+        message = self.format(record)
+        if record.levelno >= logging.ERROR:
+            log_error(message)
+        elif record.levelno >= logging.WARNING:
+            log_warning(message)
+        else:
+            log_info(message)
+
+
+def _configure_library_logging() -> None:
+    handler = HenchmanLogHandler()
+    handler.setFormatter(logging.Formatter("%(name)s: %(message)s"))
+
+    for logger_name in ("scraper", "youtube_comment_downloader"):
+        logger = logging.getLogger(logger_name)
+        logger.handlers.clear()
+        logger.addHandler(handler)
+        logger.setLevel(logging.INFO)
+        logger.propagate = False
 
 
 def _as_positive_int(value: Any, *, name: str) -> int:
@@ -37,28 +61,55 @@ def scrape_video(url: str, *, top_n: int, max_scan: int) -> ScrapeResponse:
 
     title = None
     description = None
+    step_t0 = time.time()
+    log_info(f"Request start metadata video_id={video_id}")
     try:
         meta = fetch_metadata(url)
         title = meta.get("title")
         description = meta.get("description")
+        log_info(
+            f"Request done metadata video_id={video_id} "
+            f"elapsed={time.time() - step_t0:.2f}s title_present={title is not None}"
+        )
     except Exception as exc:  # noqa: BLE001 - component errors should not fail whole scrape
-        log_warning(f"Failed to fetch metadata for {video_id}: {exc}")
+        log_warning(
+            f"Request failed metadata video_id={video_id} "
+            f"elapsed={time.time() - step_t0:.2f}s error={exc}"
+        )
         errors.append(f"metadata: {exc}")
 
     subtitles = None
+    step_t0 = time.time()
+    log_info(f"Request start subtitles.list video_id={video_id}")
     try:
         subtitles = fetch_subtitles(video_id)
         if subtitles is None:
             errors.append("subtitles: no suitable subtitles found")
+        log_info(
+            f"Request done subtitles video_id={video_id} "
+            f"elapsed={time.time() - step_t0:.2f}s found={subtitles is not None}"
+        )
     except Exception as exc:  # noqa: BLE001 - component errors should not fail whole scrape
-        log_warning(f"Failed to fetch subtitles for {video_id}: {exc}")
+        log_warning(
+            f"Request failed subtitles video_id={video_id} "
+            f"elapsed={time.time() - step_t0:.2f}s error={exc}"
+        )
         errors.append(f"subtitles: {exc}")
 
     comments = []
+    step_t0 = time.time()
+    log_info(f"Request start comments video_id={video_id} top_n={top_n} max_scan={max_scan}")
     try:
         comments = fetch_comments(url, top_n=top_n, max_scan=max_scan)
+        log_info(
+            f"Request done comments video_id={video_id} "
+            f"elapsed={time.time() - step_t0:.2f}s comments={len(comments)}"
+        )
     except Exception as exc:  # noqa: BLE001 - component errors should not fail whole scrape
-        log_warning(f"Failed to fetch comments for {video_id}: {exc}")
+        log_warning(
+            f"Request failed comments video_id={video_id} "
+            f"elapsed={time.time() - step_t0:.2f}s error={exc}"
+        )
         errors.append(f"comments: {exc}")
 
     elapsed = round(time.time() - t0, 2)
@@ -78,6 +129,7 @@ def scrape_video(url: str, *, top_n: int, max_scan: int) -> ScrapeResponse:
 
 
 def main() -> None:
+    _configure_library_logging()
     config = get_config()
     params = get_params()
 

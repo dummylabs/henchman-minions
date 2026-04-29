@@ -1,0 +1,58 @@
+#!/bin/sh
+set -eu
+
+# Block commits that change a minion's Python/manifest files without bumping
+# that minion's [project].version in pyproject.toml.
+
+changed_minions=$(
+  git diff --cached --name-only --diff-filter=ACMRT \
+    | awk -F/ '
+        NF >= 2 && ($0 ~ /\.py$/ || $2 == "manifest.yaml") {
+          print $1
+        }
+      ' \
+    | sort -u
+)
+
+[ -z "$changed_minions" ] && exit 0
+
+failed=0
+
+for minion in $changed_minions; do
+  pyproject="$minion/pyproject.toml"
+
+  if ! git diff --cached --name-only --diff-filter=ACMRT -- "$pyproject" | grep -qx "$pyproject"; then
+    echo "ERROR: $minion changed Python/manifest files, but $pyproject is not staged." >&2
+    echo "Please bump [project].version in $pyproject and stage it." >&2
+    failed=1
+    continue
+  fi
+
+  old_version=$(git show "HEAD:$pyproject" 2>/dev/null \
+    | sed -n 's/^[[:space:]]*version[[:space:]]*=[[:space:]]*["'"'"']\([^"'"'"']*\)["'"'"'].*/\1/p' \
+    | head -n 1 || true)
+
+  new_version=$(git show ":$pyproject" 2>/dev/null \
+    | sed -n 's/^[[:space:]]*version[[:space:]]*=[[:space:]]*["'"'"']\([^"'"'"']*\)["'"'"'].*/\1/p' \
+    | head -n 1 || true)
+
+  if [ -z "$new_version" ]; then
+    echo "ERROR: $pyproject does not contain [project].version." >&2
+    failed=1
+    continue
+  fi
+
+  if [ -n "$old_version" ] && [ "$old_version" = "$new_version" ]; then
+    echo "ERROR: $minion changed Python/manifest files, but [project].version stayed $new_version." >&2
+    echo "Please bump [project].version in $pyproject before committing." >&2
+    failed=1
+  fi
+done
+
+if [ "$failed" -ne 0 ]; then
+  echo "" >&2
+  echo "Version bump check failed. Bypass only intentionally with: git commit --no-verify" >&2
+  exit 1
+fi
+
+exit 0

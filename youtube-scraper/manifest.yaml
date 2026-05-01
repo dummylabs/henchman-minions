@@ -1,14 +1,18 @@
 id: youtube-scraper
 name: YouTube Scraper
-description: Extract YouTube video metadata, subtitles, and top comments
+description: Extract YouTube video metadata, subtitles, and ranked useful comments
 severity: low
 timeout_seconds: 300
 max_parallel_runs: 1
 retention_days: 30
 
 config:
-  top_n: 10
-  max_scan: 500
+  output_top_n: 10
+  candidate_top_level_limit: 30
+  max_scan: 150
+  reply_patience: 50
+  eventus_api_url: !secret EVENTUS_API_URL
+  eventus_api_token: !secret EVENTUS_API_TOKEN
 
 tags:
   - youtube

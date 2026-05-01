@@ -11,9 +11,20 @@ class Comment(BaseModel):
     votes: int
     reply_count: int = 0
     replies: list[Comment] = Field(default_factory=list)
+    usefulness_score: float | None = None
+    usefulness_reasons: list[str] = Field(default_factory=list)
 
 
 Comment.model_rebuild()
+
+
+class CommentsMeta(BaseModel):
+    strategy: str
+    scanned: int
+    candidates: int
+    selected: int
+    replies_for_candidates: int
+    stopped_reason: str
 
 
 class Subtitles(BaseModel):
@@ -28,4 +39,5 @@ class ScrapeResponse(BaseModel):
     description: Optional[str] = None
     subtitles: Optional[Subtitles] = None
     comments: list[Comment] = Field(default_factory=list)
+    comments_meta: CommentsMeta | None = None
     errors: list[str] = Field(default_factory=list)

@@ -13,6 +13,9 @@ config:
   reply_patience: 50
   eventus_api_url: !secret EVENTUS_API_URL
   eventus_api_token: !secret EVENTUS_API_TOKEN
+  excluded_categories:
+    - Entertainment
+    - News & Politics
 
 tags:
   - youtube

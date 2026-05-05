@@ -182,6 +182,16 @@ def _result_artifact(result: ScrapeResponse) -> dict[str, Any]:
     }
 
 
+def _match_excluded_category(
+    categories: list[str], excluded: list[str]
+) -> str | None:
+    excluded_lower = {c.lower() for c in excluded}
+    for cat in categories:
+        if cat.lower() in excluded_lower:
+            return cat
+    return None
+
+
 def _empty_error_result(message: str, video_id: str = "") -> dict:
     return ScrapeResponse(
         video_id=video_id,
@@ -201,6 +211,7 @@ def scrape_video(
     candidate_top_level_limit: int,
     max_scan: int,
     reply_patience: int,
+    prefetched_meta: dict[str, Any] | None = None,
 ) -> ScrapeResponse:
     errors: list[str] = []
     t0 = time.time()
@@ -223,29 +234,34 @@ def scrape_video(
     categories: list = []
     tags: list = []
     step_t0 = time.time()
-    log_info(f"Request start metadata video_id={video_id}")
-    try:
-        meta = fetch_metadata(url)
-        title = meta.get("title")
-        description = meta.get("description")
-        channel = meta.get("channel")
-        duration = meta.get("duration")
-        upload_date = meta.get("upload_date")
-        view_count = meta.get("view_count")
-        like_count = meta.get("like_count")
-        channel_id = meta.get("channel_id")
-        categories = meta.get("categories", [])
-        tags = meta.get("tags", [])
-        log_info(
-            f"Request done metadata video_id={video_id} "
-            f"elapsed={time.time() - step_t0:.2f}s title_present={title is not None}"
-        )
-    except Exception as exc:  # noqa: BLE001 - component errors should not fail whole scrape
-        log_warning(
-            f"Request failed metadata video_id={video_id} "
-            f"elapsed={time.time() - step_t0:.2f}s error={exc}"
-        )
-        errors.append(f"metadata: {exc}")
+    if prefetched_meta is not None:
+        meta = prefetched_meta
+        log_info(f"Using prefetched metadata video_id={video_id}")
+    else:
+        log_info(f"Request start metadata video_id={video_id}")
+        try:
+            meta = fetch_metadata(url)
+            log_info(
+                f"Request done metadata video_id={video_id} "
+                f"elapsed={time.time() - step_t0:.2f}s title_present={meta.get('title') is not None}"
+            )
+        except Exception as exc:  # noqa: BLE001 - component errors should not fail whole scrape
+            log_warning(
+                f"Request failed metadata video_id={video_id} "
+                f"elapsed={time.time() - step_t0:.2f}s error={exc}"
+            )
+            errors.append(f"metadata: {exc}")
+            meta = {}
+    title = meta.get("title")
+    description = meta.get("description")
+    channel = meta.get("channel")
+    duration = meta.get("duration")
+    upload_date = meta.get("upload_date")
+    view_count = meta.get("view_count")
+    like_count = meta.get("like_count")
+    channel_id = meta.get("channel_id")
+    categories = meta.get("categories", [])
+    tags = meta.get("tags", [])
 
     subtitles = None
     step_t0 = time.time()
@@ -341,6 +357,25 @@ def main() -> None:
         raise ValueError(message)
     url = url.strip()
 
+    excluded_categories: list[str] = config.get("excluded_categories") or []
+
+    # Fetch metadata early to check categories before committing to a full scrape
+    prefetched_meta: dict[str, Any] | None = None
+    try:
+        prefetched_meta = fetch_metadata(url)
+        video_categories: list[str] = prefetched_meta.get("categories") or []
+        matched = _match_excluded_category(video_categories, excluded_categories)
+        if matched:
+            comment = f"not scrapped due to category: {matched}"
+            log_info(comment)
+            set_result({"_outcome": {"code": "category_excluded", "status": "info", "message": comment}})
+            if envelope:
+                _complete_eventus_step(envelope, new_state="actionable", comment=comment)
+            return
+    except Exception as exc:  # noqa: BLE001 - metadata failure must not block scraping
+        log_warning(f"Pre-scrape metadata fetch failed, proceeding without category check: {exc}")
+        prefetched_meta = None
+
     try:
         output_top_n = _param_int(params, config, "output_top_n", 10, "top_n")
         candidate_top_level_limit = _param_int(
@@ -359,6 +394,7 @@ def main() -> None:
             candidate_top_level_limit=candidate_top_level_limit,
             max_scan=max_scan,
             reply_patience=reply_patience,
+            prefetched_meta=prefetched_meta,
         )
     except ValueError as exc:
         message = f"input: {exc}"

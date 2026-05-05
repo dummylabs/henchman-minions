@@ -10,7 +10,7 @@ retention_days: 30
 config:
   cookies_file: /data/youtube_history_cookies.txt
   state_file: /data/youtube_history_seen_ids.json
-  fetch_limit: 20
+  fetch_limit: 50
   stop_after_consecutive_dupes: 0
   eventus_url: !secret EVENTUS_API_URL
   eventus_token: !secret EVENTUS_API_TOKEN

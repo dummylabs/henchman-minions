@@ -368,9 +368,30 @@ def main() -> None:
         if matched:
             comment = f"not scrapped due to category: {matched}"
             log_info(comment)
-            set_result({"_outcome": {"code": "category_excluded", "status": "info", "message": comment}})
+            partial_result = ScrapeResponse(
+                video_id=extract_video_id(url),
+                title=prefetched_meta.get("title"),
+                description=prefetched_meta.get("description"),
+                channel=prefetched_meta.get("channel"),
+                duration=prefetched_meta.get("duration"),
+                upload_date=prefetched_meta.get("upload_date"),
+                view_count=prefetched_meta.get("view_count"),
+                like_count=prefetched_meta.get("like_count"),
+                channel_id=prefetched_meta.get("channel_id"),
+                categories=prefetched_meta.get("categories") or [],
+                tags=prefetched_meta.get("tags") or [],
+            )
+            result_data = partial_result.model_dump()
+            result_data["_outcome"] = {"code": "category_excluded", "status": "info", "message": comment}
+            set_result(result_data)
             if envelope:
-                _complete_eventus_step(envelope, new_state="actionable", comment=comment)
+                _complete_eventus_step(
+                    envelope,
+                    new_state="actionable",
+                    comment=comment,
+                    details=_result_details(partial_result),
+                    artifacts=[_result_artifact(partial_result)],
+                )
             return
     except Exception as exc:  # noqa: BLE001 - metadata failure must not block scraping
         log_warning(f"Pre-scrape metadata fetch failed, proceeding without category check: {exc}")

@@ -121,10 +121,11 @@ def main() -> None:
     consecutive_dupes = 0
     for video in videos:
         if video["id"] in seen_ids:
-            consecutive_dupes += 1
-            if consecutive_dupes >= stop_after:
-                log_info(f"Reached {stop_after} consecutive duplicates, stopping scan")
-                break
+            if stop_after > 0:
+                consecutive_dupes += 1
+                if consecutive_dupes >= stop_after:
+                    log_info(f"Reached {stop_after} consecutive duplicates, stopping scan")
+                    break
         else:
             consecutive_dupes = 0
             new_videos.append(video)

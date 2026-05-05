@@ -1,13 +1,13 @@
 #!/bin/sh
 set -eu
 
-# Block commits that change a minion's Python/manifest files without bumping
+# Block commits that change a minion's Python files without bumping
 # that minion's [project].version in pyproject.toml.
 
 changed_minions=$(
   git diff --cached --name-only --diff-filter=ACMRT \
     | awk -F/ '
-        NF >= 2 && ($0 ~ /\.py$/ || $2 == "manifest.yaml") {
+        NF >= 2 && $0 ~ /\.py$/ {
           print $1
         }
       ' \
@@ -22,7 +22,7 @@ for minion in $changed_minions; do
   pyproject="$minion/pyproject.toml"
 
   if ! git diff --cached --name-only --diff-filter=ACMRT -- "$pyproject" | grep -qx "$pyproject"; then
-    echo "ERROR: $minion changed Python/manifest files, but $pyproject is not staged." >&2
+    echo "ERROR: $minion changed Python files, but $pyproject is not staged." >&2
     echo "Please bump [project].version in $pyproject and stage it." >&2
     failed=1
     continue
@@ -43,7 +43,7 @@ for minion in $changed_minions; do
   fi
 
   if [ -n "$old_version" ] && [ "$old_version" = "$new_version" ]; then
-    echo "ERROR: $minion changed Python/manifest files, but [project].version stayed $new_version." >&2
+    echo "ERROR: $minion changed Python files, but [project].version stayed $new_version." >&2
     echo "Please bump [project].version in $pyproject before committing." >&2
     failed=1
   fi

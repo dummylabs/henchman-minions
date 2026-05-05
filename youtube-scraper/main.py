@@ -214,12 +214,28 @@ def scrape_video(
 
     title = None
     description = None
+    channel = None
+    duration = None
+    upload_date = None
+    view_count = None
+    like_count = None
+    channel_id = None
+    categories: list = []
+    tags: list = []
     step_t0 = time.time()
     log_info(f"Request start metadata video_id={video_id}")
     try:
         meta = fetch_metadata(url)
         title = meta.get("title")
         description = meta.get("description")
+        channel = meta.get("channel")
+        duration = meta.get("duration")
+        upload_date = meta.get("upload_date")
+        view_count = meta.get("view_count")
+        like_count = meta.get("like_count")
+        channel_id = meta.get("channel_id")
+        categories = meta.get("categories", [])
+        tags = meta.get("tags", [])
         log_info(
             f"Request done metadata video_id={video_id} "
             f"elapsed={time.time() - step_t0:.2f}s title_present={title is not None}"
@@ -287,6 +303,14 @@ def scrape_video(
         video_id=video_id,
         title=title,
         description=description,
+        channel=channel,
+        duration=duration,
+        upload_date=upload_date,
+        view_count=view_count,
+        like_count=like_count,
+        channel_id=channel_id,
+        categories=categories,
+        tags=tags,
         subtitles=subtitles,
         comments=comments,
         comments_meta=comments_meta,

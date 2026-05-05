@@ -41,6 +41,8 @@ class HenchmanFake(types.ModuleType):
 
 def load_main(monkeypatch: pytest.MonkeyPatch, fake_henchman: HenchmanFake):
     monkeypatch.setenv("EVENTUS_API_TOKEN", "test-token")
+    fake_henchman.config.setdefault("eventus_api_url", "http://localhost:8765")
+    fake_henchman.config.setdefault("eventus_api_token", "test-token")
     monkeypatch.setitem(sys.modules, "henchman_sdk", fake_henchman)
 
     fake_scraper = types.ModuleType("scraper")

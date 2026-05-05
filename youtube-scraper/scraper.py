@@ -76,10 +76,20 @@ def fetch_metadata(video_url: str) -> dict:
     with yt_dlp.YoutubeDL(opts) as ydl:
         info = ydl.extract_info(video_url, download=False)
     logger.info("metadata.yt_dlp.extract_info done elapsed=%.2fs", time.time() - t0)
+    raw_date = info.get("upload_date")
+    upload_date = f"{raw_date[:4]}-{raw_date[4:6]}-{raw_date[6:8]}" if raw_date else None
     return {
         "video_id": info.get("id", ""),
         "title": info.get("title"),
         "description": info.get("description"),
+        "channel": info.get("channel") or info.get("uploader"),
+        "duration": info.get("duration"),
+        "upload_date": upload_date,
+        "view_count": info.get("view_count"),
+        "like_count": info.get("like_count"),
+        "channel_id": info.get("channel_id"),
+        "categories": info.get("categories") or [],
+        "tags": info.get("tags") or [],
     }
 
 

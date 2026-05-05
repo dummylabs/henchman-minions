@@ -37,6 +37,14 @@ class ScrapeResponse(BaseModel):
     video_id: str
     title: Optional[str] = None
     description: Optional[str] = None
+    channel: Optional[str] = None
+    duration: Optional[int] = None
+    upload_date: Optional[str] = None
+    view_count: Optional[int] = None
+    like_count: Optional[int] = None
+    channel_id: Optional[str] = None
+    categories: list[str] = Field(default_factory=list)
+    tags: list[str] = Field(default_factory=list)
     subtitles: Optional[Subtitles] = None
     comments: list[Comment] = Field(default_factory=list)
     comments_meta: CommentsMeta | None = None

@@ -2,7 +2,7 @@ id: youtube_history_watcher
 name: YouTube History Watcher
 description: Fetches recent YouTube watch history via yt-dlp and sends new videos to Eventus
 severity: low
-cron: "30 * * * *"
+cron: "55 * * * *"
 timeout_seconds: 180
 max_parallel_runs: 1
 retention_days: 30
@@ -15,7 +15,7 @@ config:
   eventus_url: !secret EVENTUS_API_URL
   eventus_token: !secret EVENTUS_API_TOKEN
   eventus_channel: henchman.youtube_history
-  eventus_initiator_id: person.dima
+  eventus_initiator_id: human.dima
   eventus_ttl: "7d"
 
 tags:

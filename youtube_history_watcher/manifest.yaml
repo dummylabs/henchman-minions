@@ -1,0 +1,30 @@
+id: youtube_history_watcher
+name: YouTube History Watcher
+description: Fetches recent YouTube watch history via yt-dlp and sends new videos to Eventus
+severity: low
+cron: "3 * * * *"
+timeout_seconds: 180
+max_parallel_runs: 1
+retention_days: 30
+
+config:
+  cookies_file: /data/youtube_history_cookies.txt
+  state_file: /data/youtube_history_seen_ids.json
+  fetch_limit: 3
+  stop_after_consecutive_dupes: 3
+  eventus_url: !secret EVENTUS_API_URL
+  eventus_token: !secret EVENTUS_API_TOKEN
+  eventus_channel: henchman.youtube_history
+  eventus_initiator_id: person.dima
+  eventus_ttl: "7d"
+
+tags:
+  - youtube
+  - history
+  - eventus
+
+default_result:
+  _outcome:
+    code: idle
+    status: info
+    message: Waiting for first run
